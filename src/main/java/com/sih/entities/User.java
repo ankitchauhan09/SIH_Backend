@@ -30,11 +30,10 @@ public class User implements UserDetails {
     private List<Address> address;
     @OneToMany(mappedBy = "user")
     private List<JobApplications> jobApplications;
-    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JoinTable(name = "user_role_mapping",
-            joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id", referencedColumnName = "role_id"))
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", referencedColumnName = "role_id")
     private UserRole role;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

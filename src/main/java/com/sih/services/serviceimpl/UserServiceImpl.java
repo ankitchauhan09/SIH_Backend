@@ -13,74 +13,81 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserRepo userRepo;
-
-    @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
-    private BCryptPasswordEncoder bCryptPasswordEncoder;
-
-    @Autowired
-    private UserRoleRepo userRoleRepo;
+    private final UserRepo userRepo;
+    private final UserRoleRepo userRoleRepo;
+    private final ModelMapper modelMapper;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     @Override
     public UserDto registerUser(UserDto userDto) {
-        UserRole role = this.userRoleRepo.findByRoleName(userDto.getRoleName()).get();
-        User user = this.modelMapper.map(userDto, User.class);
+        UserRole role = userRoleRepo.findByRoleName(userDto.getRoleName())
+                .orElseThrow(() -> new RuntimeException("Role not found with name: " + userDto.getRoleName()));
+
+        User user = modelMapper.map(userDto, User.class);
         user.setRole(role);
         user.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
-        User savedUser = this.userRepo.save(user);
-        return this.modelMapper.map(savedUser, UserDto.class);
+
+        User savedUser = userRepo.save(user);
+        return modelMapper.map(savedUser, UserDto.class);
     }
 
     @Override
     public UserDto updateUser(UserDto userDto, Integer userId) {
-        User user = this.userRepo.findById(userId).get();
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
         user.setName(userDto.getName());
         user.setEmail(userDto.getEmail());
-        user.setPassword(userDto.getPassword());
-        user.setRole(userDto.getRole());
-        User saved = this.userRepo.save(user);
-        return this.modelMapper.map(saved, UserDto.class);
+        user.setContact(userDto.getContact());
+        if (userDto.getPassword() != null) {
+            user.setPassword(bCryptPasswordEncoder.encode(userDto.getPassword()));
+        }
+        UserRole role = userRoleRepo.findByRoleName(userDto.getRoleName())
+                .orElseThrow(() -> new RuntimeException("Role not found with name: " + userDto.getRoleName()));
+        user.setRole(role);
+
+        User savedUser = userRepo.save(user);
+        return modelMapper.map(savedUser, UserDto.class);
     }
 
     @Override
     public void deleteUser(UserDto userDto) {
-        this.userRepo.delete(this.modelMapper.map(userDto, User.class));
+        User user = modelMapper.map(userDto, User.class);
+        userRepo.delete(user);
     }
 
     @Override
     public void deleteUserById(Integer userId) {
-        User user = this.userRepo.findById(userId).get();
-        this.userRepo.delete(user);
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        userRepo.delete(user);
     }
 
     @Override
     public List<UserDto> getAllUsers() {
-        List<User> allUsers = this.userRepo.findAll();
-        return allUsers.stream().map(user -> this.modelMapper.map(user, UserDto.class)).collect(Collectors.toList());
+        return userRepo.findAll().stream()
+                .map(user -> modelMapper.map(user, UserDto.class))
+                .collect(Collectors.toList());
     }
 
     @Override
     public UserDto getUser(Integer userId) {
-        return this.modelMapper.map(
-                this.userRepo.findById(userId).get(),
-                UserDto.class
-        );
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        return modelMapper.map(user, UserDto.class);
     }
 
     @Override
     public UserDto getUserByEmail(String email) {
-        User user = this.userRepo.findByEmail(email)
+        User user = userRepo.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
-        return this.modelMapper.map(user, UserDto.class);
+        return modelMapper.map(user, UserDto.class);
     }
 }
